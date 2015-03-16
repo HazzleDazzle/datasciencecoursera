@@ -1,0 +1,85 @@
+pollutantmean <- function(directory, pollutant, id = 1:332) {
+        filenames <- paste(formatC(id, width=3, flag="0"),".csv",sep="")
+        olddir <- getwd()
+        setwd(directory)
+        data <- do.call("rbind", lapply(filenames, read.csv, header = TRUE))
+        pollutant.data <- data[[pollutant]]
+        setwd(olddir)
+        mean(pollutant.data,na.rm=TRUE)
+
+        ## 'pollutant' is a character vector of length 1 indicating
+        ## the name of the pollutant for which we will calculate the
+        ## mean; either "sulfate" or "nitrate".
+        
+        ## 'id' is an integer vector indicating the monitor ID numbers
+        ## to be used
+        
+        ## Return the mean of the pollutant across all monitors list
+        ## in the 'id' vector (ignoring NA values)
+
+}
+
+complete <- function(directory, id = 1:332) {
+        olddir <- getwd()
+        setwd(directory)
+        nobs <- NULL
+        for(i in id) {
+                filename <- paste(formatC(i, width=3, flag="0"),".csv",sep="")
+                data <- read.csv(filename)
+                ok <- complete.cases(data)
+                nobs[i] = sum(ok)
+        }
+        
+        setwd(olddir)
+        
+        completedata <- data.frame(id, nobs = nobs[id])
+        completedata
+        
+        ## 'directory' is a character vector of length 1 indicating
+        ## the location of the CSV files
+        
+        ## 'id' is an integer vector indicating the monitor ID numbers
+        ## to be used
+        
+        ## Return a data frame of the form:
+        ## id nobs
+        ## 1  117
+        ## 2  1041
+        ## ...
+        ## where 'id' is the monitor ID number and 'nobs' is the
+        ## number of complete cases
+}
+
+corr <- function(directory, threshold = 0) {
+        
+        complete(directory)
+        thresholddata <- complete(directory, id = 1:332)
+        thresholdsubset <- subset(thresholddata, nobs > threshold)
+        thresholdidvector <- as.vector(thresholdsubset$id)
+        olddir <- getwd()
+        setwd(directory)
+        corrvector <- NULL
+        for(i in thresholdidvector) {
+                data <- read.csv(paste(formatC(i, width=3, flag="0"),".csv",sep=""))
+                nitrate <- as.vector(data$nitrate)
+                sulfate <- as.vector(data$sulfate)
+                corrvector[i] = cor(sulfate,nitrate,use="complete.obs")
+        }
+        setwd(olddir)
+        if(!is.null(corrvector)) {
+        corrvector <- na.omit(corrvector)
+        }
+        if(is.null(corrvector)) {
+        corrvector <- vector(mode="numeric", length = 0)
+        }
+        corrvector
+        ## 'directory' is a character vector of length 1 indicating
+        ## the location of the CSV files
+        
+        ## 'threshold' is a numeric vector of length 1 indicating the
+        ## number of completely observed observations (on all
+        ## variables) required to compute the correlation between
+        ## nitrate and sulfate; the default is 0
+        
+        ## Return a numeric vector of correlations
+}
